@@ -16,6 +16,10 @@ public class Floatpiece : MonoBehaviour
     private ScoreBoard scoreBoard;
 
     // #1
+    private BuoyancyEffector2D floatEffector;
+    public float floatingTime = 0f; // floating duration
+    private float runningTime = 0f; // the current duration since startTime
+    private float startTime = 0f;
 
     void Start()
     {
@@ -29,6 +33,7 @@ public class Floatpiece : MonoBehaviour
         handcamAniController = handcamObj.GetComponent<AnimateController>();
         golightAniController = golightObj.GetComponent<AnimateController>();
         //#2
+        floatEffector = GetComponent<BuoyancyEffector2D>(); // assign component to this instance
     }
 
     void OnTriggerEnter2D(Collider2D obj)
@@ -36,11 +41,15 @@ public class Floatpiece : MonoBehaviour
         if (obj.name == "ball")
         {
             //#3
-            sound.bonus.Play();
-            scoreBoard.gamescore = scoreBoard.gamescore + 10;
-            golightRenderer.sprite = golightAniController.spriteSet[0];
-            StartCoroutine(BeginFloat());
-
+            floatEffector.density = 50;
+            if (startTime == 0f)
+            {
+                startTime = Time.time;
+                sound.bonus.Play();
+                scoreBoard.gamescore = scoreBoard.gamescore + 10;
+                golightRenderer.sprite = golightAniController.spriteSet[0];
+                StartCoroutine(BeginFloat());
+            }
         }
     }
 
@@ -49,18 +58,31 @@ public class Floatpiece : MonoBehaviour
     {
         while (true)
         {
-            
-            // Play animation loop
-            int index = (int)Mathf.PingPong(handcamAniController.fps * Time.time, handcamAniController.spriteSet.Length);
+            // calculate current duration
+            runningTime = Time.time - startTime;
+
+            // play animation loop
+            int index = (int)Mathf.PingPong(handcamAniController.fps *
+                        Time.time, handcamAniController.spriteSet.Length);
             handcamRenderer.sprite = handcamAniController.spriteSet[index];
             yield return new WaitForSeconds(0.1f);
 
-            // Stop & Reset Timer 
-            sound.bonus.Stop();
-            golightRenderer.sprite = golightAniController.spriteSet[1];
-            handcamRenderer.sprite = handcamAniController.spriteSet[handcamAniController.spriteSet.Length - 1];
-            break;
-        } 
+            // when time is up            
+            if (runningTime >= floatingTime)
+            {
+                // stop float and reset timer
+                floatEffector.density = 0;
+                runningTime = 0f;
+                startTime = 0f;
+
+                // stop sound & animation 
+                sound.bonus.Stop();
+                golightRenderer.sprite = golightAniController.spriteSet[1];
+                handcamRenderer.sprite = handcamAniController.spriteSet
+                              [handcamAniController.spriteSet.Length - 1];
+                break;
+            }
+        }
     }
 }
 
